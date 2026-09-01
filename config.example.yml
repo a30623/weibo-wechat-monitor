@@ -1,0 +1,35 @@
+common:
+  proxy_pool:
+    enable: false
+    proxy_pool_url: ""
+  push_channel:
+    # Keep false: deployment testing is performed explicitly and exactly once.
+    send_test_msg_when_start: false
+
+query_task:
+  - name: 博主A微博监控
+    enable: true
+    type: weibo
+    intervals_second: 300
+    # Each later run occurs randomly between 270 and 330 seconds.
+    jitter_seconds: 30
+    begin_time: "00:00"
+    end_time: "23:59"
+    target_push_name_list:
+      - Server酱 Turbo
+    enable_dynamic_check: true
+    enable_living_check: false
+    uid_list:
+      - "<WEIBO_UID>"
+    # desktop accepts a Cookie copied from weibo.com; mobile uses m.weibo.cn.
+    api_mode: desktop
+    # This host's anonymous check returned an unauthenticated business status.
+    # Use a secondary-account cookie and keep it only in config.local.yml.
+    cookie: "<WEIBO_COOKIE>"
+    state_file: data/weibo_state.json
+
+push_channel:
+  - name: Server酱 Turbo
+    enable: true
+    type: serverChan_turbo
+    send_key: "<SERVERCHAN_SENDKEY>"

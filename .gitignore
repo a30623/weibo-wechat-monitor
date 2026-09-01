@@ -139,3 +139,15 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Local deployment secrets and runtime data
+config.local.yml
+config.*.local.yml
+.env.local
+data/
+logs/
+run/
+*.pid
+
+# GitHub Actions creates this only inside an ephemeral runner.
+config.cloud.yml
+

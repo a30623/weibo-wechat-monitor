@@ -37,7 +37,14 @@ def init_query_task(query_task_config_list: list):
     for config in query_task_config_list:
         if config.get('enable', False):
             current_query = query_task.get_query_task(config).query
-            schedule.every(config.get("intervals_second", 60)).seconds.do(current_query)
+            interval = int(config.get("intervals_second", 60))
+            jitter = max(0, int(config.get("jitter_seconds", 0)))
+            lower = max(1, interval - jitter)
+            upper = max(lower, interval + jitter)
+            if jitter:
+                schedule.every(lower).to(upper).seconds.do(current_query)
+            else:
+                schedule.every(interval).seconds.do(current_query)
             log.info(f"初始化查询任务: {config.get('name', '')}，任务类型: {config.get('type', None)}")
             # 先执行一次
             current_query()

@@ -1,0 +1,88 @@
+name: Weibo monitor
+
+on:
+  schedule:
+    # GitHub's minimum schedule interval is five minutes. Avoid minute 0,
+    # which is usually the busiest point for scheduled workflows.
+    - cron: "2/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weibo-monitor
+  cancel-in-progress: false
+
+jobs:
+  check-weibo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      AIO_CONFIG_FILE: config.local.yml
+      WEIBO_UID: ${{ secrets.WEIBO_UID }}
+      WEIBO_COOKIE: ${{ secrets.WEIBO_COOKIE }}
+      SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+
+    steps:
+      - name: Check out monitor code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Restore persistent deduplication state
+        shell: bash
+        run: |
+          mkdir -p data
+          if git fetch --depth=1 origin monitor-state; then
+            git show FETCH_HEAD:weibo_state.json > data/weibo_state.json
+            echo "Restored persistent monitor state."
+          else
+            echo "No cloud state exists yet; this run will establish the baseline."
+          fi
+
+      - name: Apply request jitter
+        shell: bash
+        run: |
+          delay=$((RANDOM % 31))
+          echo "Waiting ${delay} seconds before checking."
+          sleep "$delay"
+
+      - name: Build private runtime configuration
+        run: python scripts/write_cloud_config.py
+
+      - name: Validate configuration
+        run: python scripts/preflight.py config.local.yml
+
+      - name: Check Weibo once
+        run: python scripts/run_once.py
+
+      - name: Persist deduplication state
+        if: success()
+        shell: bash
+        run: |
+          cp data/weibo_state.json /tmp/weibo_state.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth=1 origin monitor-state; then
+            git switch --force-create monitor-state FETCH_HEAD
+          else
+            git switch --orphan monitor-state
+          fi
+          cp /tmp/weibo_state.json weibo_state.json
+          git add weibo_state.json
+          if git diff --cached --quiet; then
+            echo "Monitor state is unchanged."
+          else
+            git commit -m "chore: persist Weibo monitor state"
+            git push origin HEAD:monitor-state
+          fi

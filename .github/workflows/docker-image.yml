@@ -1,9 +1,7 @@
 name: Build and Push Docker Image
 
 on:
-  push:
-    branches:
-      - master
+  # This local fork does not publish Docker images automatically.
   workflow_dispatch:
 
 env:

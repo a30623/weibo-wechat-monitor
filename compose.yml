@@ -1,0 +1,10 @@
+services:
+  weibo-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./config.local.yml:/mnt/config.yml:ro
+      - ./data:/app/data
+    # No ports are published; this service only makes outbound HTTPS requests.

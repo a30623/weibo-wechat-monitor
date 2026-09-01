@@ -52,10 +52,12 @@ class QueryTask(ABC):
                 log.error(f"【{module_name}-查询动态状态-{self.name}】【{user_name}】动态列表为空")
 
     def push(self, title, content, jump_url=None, pic_url=None, extend_data=None):
+        results = []
         for item in self.target_push_name_list:
             target_push_channel = push_channel.push_channel_dict.get(item, None)
             if target_push_channel is None:
                 log.error(f"【{self.name}】推送通道【{item}】不存在")
+                results.append(False)
             else:
                 try:
                     if extend_data is None:
@@ -76,6 +78,8 @@ class QueryTask(ABC):
                     }
                     if pic_url == '':
                         pic_url = None
-                    target_push_channel.push(title, content, jump_url, pic_url, extend_data)
+                    results.append(target_push_channel.push(title, content, jump_url, pic_url, extend_data) is not False)
                 except Exception as e:
                     log.error(f"【{self.name}】推送通道【{item}】出错：{e}", exc_info=True)
+                    results.append(False)
+        return bool(results) and all(results)

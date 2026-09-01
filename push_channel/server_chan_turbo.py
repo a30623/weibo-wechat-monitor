@@ -19,5 +19,13 @@ class ServerChanTurbo(PushChannel):
         if pic_url:
             data["desp"] += f"\n\n![]({pic_url})"
         response = util.requests_post(push_url, self.name, data=data)
-        push_result = "成功" if util.check_response_is_ok(response) else "失败"
+        success = util.check_response_is_ok(response)
+        if success:
+            try:
+                result = response.json()
+                success = result.get("code") == 0
+            except (ValueError, AttributeError):
+                success = False
+        push_result = "成功" if success else "失败"
         log.info(f"【推送_{self.name}】{push_result}")
+        return success
