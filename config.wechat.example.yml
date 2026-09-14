@@ -1,0 +1,34 @@
+common:
+  proxy_pool:
+    enable: false
+    proxy_pool_url: ""
+  push_channel:
+    send_test_msg_when_start: false
+
+query_task:
+  - name: 博主A微博监控
+    enable: true
+    type: weibo
+    intervals_second: 300
+    jitter_seconds: 30
+    begin_time: "00:00"
+    end_time: "23:59"
+    target_push_name_list:
+      - 微信公众号
+    enable_dynamic_check: true
+    enable_living_check: false
+    uid_list:
+      - "<WEIBO_UID>"
+    api_mode: desktop
+    cookie: "<WEIBO_COOKIE>"
+    state_file: data/weibo_state.json
+
+push_channel:
+  - name: 微信公众号
+    enable: true
+    type: wechat_official_account
+    app_id: "<WECHAT_APP_ID>"
+    app_secret: "<WECHAT_APP_SECRET>"
+    template_id: "<WECHAT_TEMPLATE_ID>"
+    open_id_list:
+      - "<WECHAT_OPEN_ID>"

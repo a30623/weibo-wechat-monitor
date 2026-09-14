@@ -34,13 +34,33 @@ def main():
     if not cookie or "WEIBO_COOKIE" in cookie or cookie.startswith("<"):
         fail("当前网络验证需要微博 Cookie；请只写入私密配置，不要粘贴到聊天或命令行")
 
-    channels = [item for item in config.get("push_channel", [])
-                if item.get("enable") and item.get("type") == "serverChan_turbo"]
+    channels = [item for item in config.get("push_channel", []) if item.get("enable")]
     if len(channels) != 1:
-        fail("应恰好启用一个 Server酱 Turbo 通道")
-    send_key = str(channels[0].get("send_key", "")).strip()
-    if not send_key or "SERVERCHAN_SENDKEY" in send_key or send_key.startswith("<"):
-        fail("请在私密配置中填写 Server酱 Turbo SendKey")
+        fail("应恰好启用一个推送通道")
+    channel = channels[0]
+    if channel.get("name") not in task.get("target_push_name_list", []):
+        fail("查询任务绑定的推送通道名称与已启用通道不一致")
+    if channel.get("type") == "serverChan_turbo":
+        send_key = str(channel.get("send_key", "")).strip()
+        if not send_key or "SERVERCHAN_SENDKEY" in send_key or send_key.startswith("<"):
+            fail("请在私密配置中填写 Server酱 Turbo SendKey")
+    elif channel.get("type") == "wechat_official_account":
+        required = {
+            "app_id": "AppID",
+            "app_secret": "AppSecret",
+            "template_id": "模板 ID",
+        }
+        for key, label in required.items():
+            value = str(channel.get(key, "")).strip()
+            if not value or value.startswith("<"):
+                fail(f"请在私密配置中填写微信公众号 {label}")
+        open_ids = channel.get("open_id_list", channel.get("open_id", []))
+        if isinstance(open_ids, str):
+            open_ids = [open_ids]
+        if not open_ids or any(not str(value).strip() or str(value).startswith("<") for value in open_ids):
+            fail("请在私密配置中填写至少一个微信公众号接收者 OpenID")
+    else:
+        fail(f"当前部署检查不支持推送类型：{channel.get('type')}")
     print("配置检查通过（凭据内容未输出）")
 
 

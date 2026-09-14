@@ -14,6 +14,7 @@ from .telegram_bot import TelegramBot
 from .webhook import Webhook
 from .wecom_apps import WeComApps
 from .wecom_bot import WeComBot
+from .wechat_official_account import WechatOfficialAccount
 
 push_channel_dict: dict[str, PushChannel] = {}
 
@@ -22,6 +23,7 @@ _channel_type_to_class = {
     "serverChan_3": ServerChan3,
     "wecom_apps": WeComApps,
     "wecom_bot": WeComBot,
+    "wechat_official_account": WechatOfficialAccount,
     "dingtalk_bot": DingtalkBot,
     "feishu_apps": FeishuApps,
     "feishu_bot": FeishuBot,

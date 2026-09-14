@@ -9,6 +9,7 @@ import push_channel
 from common.config import ConfigReaderForYml
 from common import util
 from push_channel.server_chan_turbo import ServerChanTurbo
+from push_channel.wechat_official_account import WechatOfficialAccount
 from query_task.query_weibo import QueryWeibo
 
 
@@ -151,6 +152,39 @@ class WeiboMonitorTests(unittest.TestCase):
         with patch("push_channel.server_chan_turbo.util.requests_post",
                    return_value=FakeResponse(result={"code": 40001})):
             self.assertFalse(channel.push("title", "body"))
+
+    def test_wechat_official_account_sends_template_and_caches_token(self):
+        channel = WechatOfficialAccount({
+            "name": "wechat", "enable": True, "type": "wechat_official_account",
+            "app_id": "appid", "app_secret": "secret", "template_id": "template",
+            "open_id_list": ["openid"],
+        })
+        token_response = FakeResponse(result={"access_token": "access-token", "expires_in": 7200})
+        send_response = FakeResponse(result={"errcode": 0, "errmsg": "ok"})
+        with patch("push_channel.wechat_official_account.util.requests_post",
+                   side_effect=[token_response, send_response, send_response]) as request:
+            self.assertTrue(channel.push("新微博", "博主和正文", "https://m.weibo.cn/detail/1"))
+            self.assertTrue(channel.push("又一条", "正文", "https://m.weibo.cn/detail/2"))
+
+        self.assertEqual(request.call_count, 3)
+        token_call = request.call_args_list[0]
+        self.assertEqual(token_call.kwargs["json"]["secret"], "secret")
+        first_send = request.call_args_list[1]
+        self.assertEqual(first_send.kwargs["json"]["touser"], "openid")
+        self.assertEqual(first_send.kwargs["json"]["data"]["title"]["value"], "新微博")
+        self.assertEqual(first_send.kwargs["json"]["url"], "https://m.weibo.cn/detail/1")
+
+    def test_wechat_official_account_rejects_business_error(self):
+        channel = WechatOfficialAccount({
+            "name": "wechat", "enable": True, "type": "wechat_official_account",
+            "app_id": "appid", "app_secret": "secret", "template_id": "template",
+            "open_id": "openid",
+        })
+        with patch("push_channel.wechat_official_account.util.requests_post", side_effect=[
+                FakeResponse(result={"access_token": "access-token", "expires_in": 7200}),
+                FakeResponse(result={"errcode": 43004, "errmsg": "require subscribe"}),
+        ]):
+            self.assertFalse(channel.push("新微博", "正文"))
 
 
 if __name__ == "__main__":
