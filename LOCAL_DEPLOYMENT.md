@@ -115,10 +115,10 @@ git log --oneline HEAD..origin/master
 
 `scripts/status.ps1` 应显示 `RUNNING`；`logs/monitor.stderr.log` 应约每 270–330 秒出现一次查询活动，且没有连续请求错误；`data/weibo_state.json` 应存在并在发现新微博后更新。可用 `Get-Item .\data\weibo_state.json` 查看修改时间，不要把正式状态内容复制到公开位置。
 
-## GitHub Actions 无服务器运行
+## GitHub Actions 旧版 Server酱任务
 
-`.github/workflows/weibo-monitor.yml` 每 5 分钟触发一次，并随机等待 0–30 秒后执行单次检查。仓库中只包含可公开的程序文件；私密值必须配置成仓库 Actions Secrets：`WEIBO_UID`、`WEIBO_COOKIE`、`SERVERCHAN_SENDKEY`。工作流运行时才生成被忽略的 `config.local.yml`，不会输出凭据内容。
+迁移到常驻服务器和微信公众号后，`.github/workflows/weibo-monitor.yml` 已移除自动 `schedule`，不会再定时调用 Server酱。它仅保留 `workflow_dispatch` 手动恢复入口；仓库中仍只包含可公开的程序文件，私密值位于 GitHub Actions Secrets，不会输出凭据内容。
 
 云端去重状态保存在独立的 `monitor-state` 分支。第一次成功运行在该分支建立基线，不推送历史微博；后续运行读取同一状态，只有发现新微博并成功推送后才更新。不要删除该分支，否则下一次运行会重新建立基线。
 
-在仓库的 Actions 页面查看 `Weibo monitor`：绿色运行记录表示检查成功；也可以用 `Run workflow` 手动检查。云端验证完成后应停止本机进程，避免本机和云端同时监控。GitHub 的计划任务可能延迟，并且公开仓库长期无活动时可能被自动停用，需要定期查看 Actions 页面。
+如确需临时恢复旧通道，可在仓库 Actions 页面手动运行 `Legacy ServerChan monitor (manual only)`；恢复前应先停止服务器计划任务，避免重复监控和付费推送。正常情况下不要运行该旧工作流。

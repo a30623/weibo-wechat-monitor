@@ -1,10 +1,8 @@
-name: Weibo monitor
+name: Legacy ServerChan monitor (manual only)
 
 on:
-  schedule:
-    # GitHub's minimum schedule interval is five minutes. Avoid minute 0,
-    # which is usually the busiest point for scheduled workflows.
-    - cron: "2/5 * * * *"
+  # Automatic scheduling was retired after migration to the always-on server
+  # and WeChat Official Account. Keep manual dispatch only for recovery.
   workflow_dispatch:
 
 permissions:
