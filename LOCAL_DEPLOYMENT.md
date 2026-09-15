@@ -1,11 +1,11 @@
 # 微博更新到个人微信：本机部署说明
 
-本目录基于 `nfe-w/aio-dynamic-push`，用于个人、非商业地监控一个微博博主的公开原创及转发微博，并通过 Server酱 Turbo 通知个人微信。上游基线 commit 记录在 `UPSTREAM_COMMIT`。
+本目录基于 `nfe-w/aio-dynamic-push`，用于个人、非商业地监控一个微博博主的公开原创及转发微博，并通过微信公众号模板消息通知个人微信。上游基线 commit 记录在 `UPSTREAM_COMMIT`。
 
 ## 文件位置
 
-- 私密配置：`config.local.yml`（已被 Git 和 Docker 构建上下文排除）
-- 可提交模板：`config.example.yml`
+- 私密配置：`config.local.yml`（服务器实际文件；已被 Git 和 Docker 构建上下文排除）
+- 可提交模板：`config.wechat.example.yml`
 - 持久去重状态：`data/weibo_state.json`
 - 日志：`logs/monitor.stdout.log`、`logs/monitor.stderr.log`
 - 进程号：`run/monitor.pid`
@@ -14,7 +14,7 @@
 
 ## 首次配置和验证
 
-1. 把 `config.local.yml` 中 `<WEIBO_UID>` 换成数字 UID，把 `<SERVERCHAN_SENDKEY>` 换成 SendKey，并把 `<WEIBO_COOKIE>` 换成 Cookie。该文件不可提交。当前 `desktop` 模式的 Cookie 获取方式：浏览器登录 `https://weibo.com`，按 F12 打开 Network 后刷新，选中同域请求，只把 Request Headers 中的 `cookie` 值写入该字段；关闭开发者工具，不要复制到聊天。
+1. 从 `config.wechat.example.yml` 生成 `config.local.yml`，填写微博 UID、Cookie，以及微信公众号的 AppID、AppSecret、模板 ID 和接收者 OpenID。该文件不可提交。模板正文见 `WECHAT_OFFICIAL_SETUP.md`。当前 `desktop` 模式的 Cookie 获取方式：浏览器登录 `https://weibo.com`，按 F12 打开 Network 后刷新，选中同域请求，只把 Request Headers 中的 `cookie` 值写入该字段；关闭开发者工具，不要复制到聊天。
 2. 解析主页并验证公开读取：
 
    ```powershell
@@ -31,10 +31,10 @@
    .\.venv\Scripts\python.exe .\scripts\preflight.py .\config.local.yml
    ```
 
-4. 只在首次部署时发送一次获准的测试消息：
+4. 只在明确获准时发送一次微信公众号测试消息：
 
    ```powershell
-   .\.venv\Scripts\python.exe .\scripts\send_deployment_test.py .\config.local.yml
+   .\.venv\Scripts\python.exe .\scripts\send_wechat_test.py .\config.local.yml
    ```
 
 ## 日常运行
@@ -62,17 +62,43 @@ powershell -ExecutionPolicy Bypass -File .\scripts\logs.ps1
 
 Docker/Compose 可用的机器也可执行 `docker compose up -d --build`；`compose.yml` 不发布端口，私密配置只读挂载，`data/` 持久挂载，重启策略为 `unless-stopped`。
 
+## Windows 服务器计划任务部署
+
+服务器部署目录为 `C:\weibo-wechat-monitor`，项目级 Python 位于 `runtime\python`。计划任务名为 `WeiboWechatMonitor`，以 `SYSTEM` 身份在开机时启动，进程异常退出后一分钟自动重启。常用命令需在管理员 PowerShell 中运行：
+
+```powershell
+# 启动
+Start-ScheduledTask -TaskName WeiboWechatMonitor
+
+# 停止
+Stop-ScheduledTask -TaskName WeiboWechatMonitor
+
+# 重启
+Stop-ScheduledTask -TaskName WeiboWechatMonitor
+Start-ScheduledTask -TaskName WeiboWechatMonitor
+
+# 状态
+Get-ScheduledTask -TaskName WeiboWechatMonitor | Select-Object TaskName, State
+Get-ScheduledTaskInfo -TaskName WeiboWechatMonitor
+
+# 查看最新日志
+Get-Content C:\weibo-wechat-monitor\logs\monitor.stdout.log -Tail 80
+Get-Content C:\weibo-wechat-monitor\logs\monitor.stderr.log -Tail 80
+```
+
+修改 `config.local.yml` 后重启任务。服务器部署不开放应用端口；程序只发起微博和微信 API 的出站 HTTPS 请求。
+
 ## 修改监控对象和间隔
 
 编辑私密配置中的 `uid_list`。默认 `intervals_second: 300`、`jitter_seconds: 30`，即每次约 270–330 秒。修改后执行重启命令。更换博主时，应先停止服务，备份并移走旧 `data/weibo_state.json`，然后启动；首次成功读取只建立新基线，不推送历史。
 
 ## 凭据失效
 
-Server酱 SendKey 失效时：停止服务，在 `config.local.yml` 更换 `send_key`，运行配置检查；只有需要再次验证通道且明确同意再发一条测试消息时，才运行通道测试脚本。微博 Cookie 失效时，在浏览器登录 `https://weibo.com`，只将同域请求头中的 Cookie 写入私密配置 `cookie` 字段，然后重启。日志不会输出配置值、请求头或带 SendKey 的 URL 路径。
+微信公众号 AppSecret、模板 ID 或 OpenID 失效时：停止服务，在 `config.local.yml` 更换对应字段并运行配置检查；只有明确同意再发一条测试消息时，才运行通道测试脚本。微博 Cookie 失效时，在浏览器登录 `https://weibo.com`，只将同域请求头中的 Cookie 写入私密配置 `cookie` 字段，然后重启。日志不会输出配置值、Cookie、AppSecret、OpenID 或带 access token 的 URL。
 
 ## 数据备份和恢复
 
-停止服务后备份 `config.local.yml` 与整个 `data/` 目录。恢复时放回相同路径，确认仅当前用户可读，然后启动。不要删除正式状态文件来排障，否则下一次会重新建立基线；虽然不会批量推送历史，但会重置已见记录。
+停止服务后备份 `config.local.yml` 与整个 `data/` 目录。Windows 服务器可将 `C:\weibo-wechat-monitor\config.local.yml` 和 `C:\weibo-wechat-monitor\data` 一并保存到受控位置。恢复时放回相同路径，确认仅管理员和 `SYSTEM` 可读，然后启动。不要删除正式状态文件来排障，否则下一次会重新建立基线；虽然不会批量推送历史，但会重置已见记录。
 
 ## 更新上游
 
