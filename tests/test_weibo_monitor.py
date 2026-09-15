@@ -163,7 +163,8 @@ class WeiboMonitorTests(unittest.TestCase):
         send_response = FakeResponse(result={"errcode": 0, "errmsg": "ok"})
         with patch("push_channel.wechat_official_account.util.requests_post",
                    side_effect=[token_response, send_response, send_response]) as request:
-            self.assertTrue(channel.push("新微博", "博主和正文", "https://m.weibo.cn/detail/1"))
+            self.assertTrue(channel.push(
+                "新微博", "博主和正文", "https://m.weibo.cn/detail/1", "https://img.example/1.jpg"))
             self.assertTrue(channel.push("又一条", "正文", "https://m.weibo.cn/detail/2"))
 
         self.assertEqual(request.call_count, 3)
@@ -172,6 +173,7 @@ class WeiboMonitorTests(unittest.TestCase):
         first_send = request.call_args_list[1]
         self.assertEqual(first_send.kwargs["json"]["touser"], "openid")
         self.assertEqual(first_send.kwargs["json"]["data"]["title"]["value"], "新微博")
+        self.assertIn("https://img.example/1.jpg", first_send.kwargs["json"]["data"]["content"]["value"])
         self.assertEqual(first_send.kwargs["json"]["url"], "https://m.weibo.cn/detail/1")
 
     def test_wechat_official_account_rejects_business_error(self):

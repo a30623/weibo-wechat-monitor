@@ -98,6 +98,8 @@ class WechatOfficialAccount(PushChannel):
     def push(self, title, content, jump_url=None, pic_url=None, extend_data=None):
         if not all((self.app_id, self.app_secret, self.template_id, self.open_id_list)):
             return False
+        if pic_url:
+            content = f"{content}\n\n微博图片：{pic_url}"
         results = [self._send_one(open_id, title, content, jump_url) for open_id in self.open_id_list]
         success = bool(results) and all(results)
         log.info(f"【推送_{self.name}】{'成功' if success else '失败'}")
