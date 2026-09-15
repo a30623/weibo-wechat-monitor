@@ -4,11 +4,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ProjectDir = Split-Path -Parent $PSScriptRoot
-$Runner = Join-Path $PSScriptRoot 'server_run.ps1'
+$Runner = Join-Path $PSScriptRoot 'server_run.cmd'
 if (-not (Test-Path -LiteralPath $Runner)) { throw "Runner is missing: $Runner" }
 
-$arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$Runner`""
-$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments -WorkingDirectory $ProjectDir
+$arguments = "/d /c `"$Runner`""
+$action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument $arguments -WorkingDirectory $ProjectDir
 $trigger = New-ScheduledTaskTrigger -AtStartup
 $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
 $settings = New-ScheduledTaskSettingsSet `
